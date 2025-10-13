@@ -1,1 +1,49 @@
+name: Update Yield Data Daily
+on:
+  schedule:
+    - cron: '0 21 * * *'  # Daily at 9 PM UTC (adjust for market close)
+  workflow_dispatch:  # Manual trigger for testing
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: pip install pandas requests
+    - name: Fetch and update CSV
+      run: |
+        import pandas as pd
+        import requests
+        from io import StringIO
+        import os
 
+        # Fetch latest Treasury CSV (adapt URL/API)
+        url = 'https://fiscaldata.treasury.gov/datasets/daily-treasury-par-yield-curve-rates/daily-treasury-par-yield-curve-rates'  # Or direct CSV
+        response = requests.get(url)  # Use API params for date filter
+        new_df = pd.read_csv(StringIO(response.text))  # Parse response
+        new_df['Date'] = pd.to_datetime(new_df['Record Date'])  # Adjust columns
+        new_df = new_df[['Date', '1 Mo', '2 Mo', '3 Mo', ...]]  # Select maturities
+
+        # Load existing CSV
+        if os.path.exists('yield_data_all.csv'):
+            df_all = pd.read_csv('yield_data_all.csv')
+            df_all['Date'] = pd.to_datetime(df_all['Date'])
+        else:
+            df_all = pd.DataFrame()
+
+        # Append new data (avoid duplicates)
+        df_all = pd.concat([df_all, new_df]).drop_duplicates('Date').sort_values('Date').reset_index(drop=True)
+
+        # Save updated CSV
+        df_all.to_csv('yield_data_all.csv', index=False)
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add yield_data_all.csv
+        git diff --staged --quiet || git commit -m "Update yield data - $(date +%Y-%m-%d)"
+        git push
