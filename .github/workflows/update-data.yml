@@ -18,6 +18,6 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add yield_data_all.csv
+        git add year_daily_treasury_rates.csv
         git diff --staged --quiet || git commit -m "Update yield data - $(date +%Y-%m-%d)"
         git push
