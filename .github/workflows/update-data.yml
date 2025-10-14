@@ -1,65 +1,23 @@
-import pandas as pd
-import requests
-from io import StringIO
-import os
-from datetime import datetime
-
-# CSV URL for 2025 yield curve data
-csv_url = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2025/all?type=daily_treasury_yield_curve&field_tdr_date_value=2025&page&_format=csv"
-
-# Fetch CSV
-response = requests.get(csv_url)
-response.raise_for_status()
-
-# Parse CSV into DataFrame
-df_new = pd.read_csv(StringIO(response.text))
-
-# Standardize column names to match your CSV
-df_new.columns = df_new.columns.str.strip()  # Remove any whitespace
-rename_dict = {
-    'Date': 'Date',
-    '1 Mo': '1 Mo',
-    '1.5 Mo': '1.5 Mo',
-    '2 Mo': '2 Mo',
-    '3 Mo': '3 Mo',
-    '4 Mo': '4 Mo',
-    '6 Mo': '6 Mo',
-    '1 Yr': '1 Yr',
-    '2 Yr': '2 Yr',
-    '3 Yr': '3 Yr',
-    '5 Yr': '5 Yr',
-    '7 Yr': '7 Yr',
-    '10 Yr': '10 Yr',
-    '20 Yr': '20 Yr',
-    '30 Yr': '30 Yr'
-}
-df_new = df_new.rename(columns=rename_dict)
-
-# Keep only relevant columns
-relevant_cols = ['Date', '1 Mo', '1.5 Mo', '2 Mo', '3 Mo', '4 Mo', '6 Mo', '1 Yr', '2 Yr', '3 Yr', '5 Yr', '7 Yr', '10 Yr', '20 Yr', '30 Yr']
-df_new = df_new[relevant_cols].copy()
-
-# Parse Date column
-df_new['Date'] = pd.to_datetime(df_new['Date'], errors='coerce')
-
-# Get the latest row (most recent date)
-latest_row = df_new.sort_values('Date').iloc[-1:].copy()
-
-# Load existing data
-csv_path = 'yield_data_all.csv'
-if os.path.exists(csv_path):
-    df_all = pd.read_csv(csv_path)
-    df_all['Date'] = pd.to_datetime(df_all['Date'])
-else:
-    df_all = pd.DataFrame(columns=relevant_cols)
-
-# Append if new date
-if latest_row['Date'].iloc[0] not in df_all['Date'].values:
-    df_all = pd.concat([df_all, latest_row], ignore_index=True)
-    df_all = df_all.sort_values('Date').drop_duplicates('Date', keep='last').reset_index(drop=True)
-    df_all.to_csv(csv_path, index=False)
-    print(f"Appended new data for {latest_row['Date'].iloc[0]} to yield_data_all.csv")
-else:
-    print("No new data to append")
-
-print(f"Current latest date in CSV: {df_all['Date'].max()}")
+name: Update Yield Data Daily
+on:
+  schedule:
+    - cron: '0 21 * * *'  # Daily at 9 AM UTC (2 AM MST, after market close)
+  workflow_dispatch:  # Manual trigger
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install pandas requests
+    - name: Fetch and update yield data
+      run: python update_yield_data.py
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add yield_data_all.csv
+        git diff --staged --quiet || git commit -m "Update yield data - $(date +%Y-%m-%d)"
+        git push
