@@ -14,6 +14,9 @@ response.raise_for_status()
 # Parse CSV into DataFrame
 df_new = pd.read_csv(StringIO(response.text))
 
+# Debug: Print Treasury CSV column names to verify
+print("Treasury CSV columns:", df_new.columns.tolist())
+
 # Standardize column names to match yield_data_all.csv
 df_new.columns = df_new.columns.str.strip()  # Remove whitespace
 rename_dict = {
