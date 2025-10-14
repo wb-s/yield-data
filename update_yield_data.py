@@ -19,7 +19,7 @@ df_new.columns = df_new.columns.str.strip()  # Remove whitespace
 rename_dict = {
     'Date': 'Date',
     '1 Mo': '1 Mo',
-    '1.5 Mo': '1.5 Mo',  # Treasury CSV might use '1.5 Month', adjust if needed
+    '1.5 Month': '1.5 Mo',
     '2 Mo': '2 Mo',
     '3 Mo': '3 Mo',
     '4 Mo': '4 Mo',
