@@ -46,7 +46,7 @@ df_new['Date'] = pd.to_datetime(df_new['Date'], errors='coerce')
 latest_row = df_new.sort_values('Date').iloc[-1:].copy()
 
 # Load existing data
-csv_path = 'yield_data_all.csv'
+csv_path = 'year_daily_treasury_rates.csv'
 if os.path.exists(csv_path):
     df_all = pd.read_csv(csv_path)
     df_all['Date'] = pd.to_datetime(df_all['Date'])
@@ -58,7 +58,7 @@ if latest_row['Date'].iloc[0] not in df_all['Date'].values:
     df_all = pd.concat([latest_row, df_all], ignore_index=True)  # Prepend new row
     df_all = df_all.sort_values('Date', ascending=False).reset_index(drop=True)  # Newest first
     df_all.to_csv(csv_path, index=False)
-    print(f"Prepended new data for {latest_row['Date'].iloc[0]} to yield_data_all.csv")
+    print(f"Prepended new data for {latest_row['Date'].iloc[0]} to year_daily_treasury_rates.csv")
 else:
     print("No new data to append")
 
