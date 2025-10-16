@@ -45,24 +45,37 @@ df_new = df_new[relevant_cols].copy()
 # Parse Date column
 df_new['Date'] = pd.to_datetime(df_new['Date'], errors='coerce')
 
-# Get the latest row (most recent date)
-latest_row = df_new.sort_values('Date').iloc[-1:].copy()
+# Remove any rows with invalid dates
+df_new = df_new.dropna(subset=['Date'])
+
+print(f"Fetched {len(df_new)} rows from Treasury (date range: {df_new['Date'].min()} to {df_new['Date'].max()})")
 
 # Load existing data
 csv_path = 'year_daily_treasury_rates.csv'
 if os.path.exists(csv_path):
     df_all = pd.read_csv(csv_path)
     df_all['Date'] = pd.to_datetime(df_all['Date'])
+    print(f"Existing CSV has {len(df_all)} rows (latest date: {df_all['Date'].max()})")
 else:
     df_all = pd.DataFrame(columns=relevant_cols)
+    print("No existing CSV found, creating new one")
 
-# Append if new date, then sort to keep newest first
-if latest_row['Date'].iloc[0] not in df_all['Date'].values:
-    df_all = pd.concat([latest_row, df_all], ignore_index=True)  # Prepend new row
-    df_all = df_all.sort_values('Date', ascending=False).reset_index(drop=True)  # Newest first
+# Find missing dates: new data not already in existing CSV
+missing_dates = df_new[~df_new['Date'].isin(df_all['Date'])].copy()
+print(f"Found {len(missing_dates)} new/missing rows to add")
+
+if len(missing_dates) > 0:
+    # Combine existing + new data
+    df_all = pd.concat([df_all, missing_dates], ignore_index=True)
+    
+    # Sort by date (newest first) and remove duplicates
+    df_all = df_all.sort_values('Date', ascending=False).drop_duplicates(subset=['Date']).reset_index(drop=True)
+    
+    # Save updated CSV
     df_all.to_csv(csv_path, index=False)
-    print(f"Prepended new data for {latest_row['Date'].iloc[0]} to year_daily_treasury_rates.csv")
+    print(f"Added {len(missing_dates)} new rows. Total rows now: {len(df_all)}")
+    print(f"New date range: {df_all['Date'].min()} to {df_all['Date'].max()}")
 else:
-    print("No new data to append")
+    print("No new data to add")
 
-print(f"Current latest date in CSV: {df_all['Date'].max()}")
+print(f"Update complete! Latest date in CSV: {df_all['Date'].max()}")
